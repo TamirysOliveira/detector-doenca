@@ -1,110 +1,85 @@
-import streamlit as st 
+import streamlit as st
+import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
-st.balloons()
-st.markdown("# Data Evaluation App")
+class Perceptron:
+    def __init__(self, num_inputs, learning_rate=0.01, epochs=100):
+        self.num_inputs = num_inputs
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        # Inicialize os pesos com valores aleatórios pequenos
+        self.weights = np.random.randn(num_inputs + 1)  # +1 para o viés
 
-st.write("We are so glad to see you here. ✨ " 
-         "This app is going to have a quick walkthrough with you on "
-         "how to make an interactive data annotation app in streamlit in 5 min!")
+    def predict(self, inputs):
+        # Adiciona 1 para o viés
+        inputs = np.insert(inputs, 0, 1)
+        # Calcula a soma ponderada
+        weighted_sum = np.dot(inputs, self.weights)
+        # Aplica a função de ativação (no caso, função degrau)
+        activation = 1 if weighted_sum > 0 else 0
+        return activation
 
-st.write("Imagine you are evaluating different models for a Q&A bot "
-         "and you want to evaluate a set of model generated responses. "
-        "You have collected some user data. "
-         "Here is a sample question and response set.")
+    def train(self, training_inputs, labels):
+        for _ in range(self.epochs):
+            for inputs, label in zip(training_inputs, labels):
+                prediction = self.predict(inputs)
+                # Atualiza os pesos com base no erro
+                error = label - prediction
+                self.weights += self.learning_rate * error * np.insert(inputs, 0, 1)
 
-data = {
-    "Questions": 
-        ["Who invented the internet?"
-        , "What causes the Northern Lights?"
-        , "Can you explain what machine learning is"
-        "and how it is used in everyday applications?"
-        , "How do penguins fly?"
-    ],           
-    "Answers": 
-        ["The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting" 
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds."
-    ]
-}
+def main():
+    st.title("Perceptron de Rosenblatt para Classificação de Doenças Cardíacas")
 
-df = pd.DataFrame(data)
+    # Carregamento dos dados
+    data = pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data",
+                       header=None)
+    data.columns = ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak',
+                    'slope', 'ca', 'thal', 'target']
 
-st.write(df)
+    # Pré-processamento dos dados
+    data = data.replace('?', np.nan)
+    data = data.dropna()
+    X = data.drop('target', axis=1)
+    y = data['target']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-st.write("Now I want to evaluate the responses from my model. "
-         "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-         "You will now notice our dataframe is in the editing mode and try to "
-         "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇")
+    # Criação e treinamento do perceptron
+    perceptron = Perceptron(num_inputs=X_train_scaled.shape[1])
+    perceptron.train(X_train_scaled, y_train)
 
-df["Issue"] = [True, True, True, False]
-df['Category'] = ["Accuracy", "Accuracy", "Completeness", ""]
+    # Interface do usuário para inserir novos dados
+    st.sidebar.header("Novos Dados do Paciente")
+    age = st.sidebar.slider("Idade", min_value=20, max_value=100, value=50)
+    sex = st.sidebar.radio("Sexo", ["Masculino", "Feminino"])
+    sex = 1 if sex == "Masculino" else 0
+    cp = st.sidebar.slider("Tipo de Dor no Peito", min_value=0, max_value=3, value=1)
+    trestbps = st.sidebar.slider("Pressão Arterial em Repouso", min_value=80, max_value=200, value=120)
+    chol = st.sidebar.slider("Colesterol Sérico em mg/dl", min_value=100, max_value=600, value=200)
+    fbs = st.sidebar.radio("Nível de Açúcar no Sangue em Jejum", ["< 120 mg/dl", "> 120 mg/dl"])
+    fbs = 1 if fbs == "> 120 mg/dl" else 0
+    restecg = st.sidebar.slider("Resultados do Eletrocardiograma em Repouso", min_value=0, max_value=2, value=1)
+    thalach = st.sidebar.slider("Frequência Cardíaca Máxima Alcançada", min_value=60, max_value=220, value=150)
+    exang = st.sidebar.radio("Angina Induzida pelo Exercício", ["Sim", "Não"])
+    exang = 1 if exang == "Sim" else 0
+    oldpeak = st.sidebar.slider("Depressão do Segmento ST Induzida pelo Exercício em Relação ao Repouso",
+                                min_value=0.0, max_value=10.0, value=2.0)
+    slope = st.sidebar.slider("Inclinação do Segmento ST do Pico do Exercício", min_value=0, max_value=2, value=1)
+    ca = st.sidebar.slider("Número de Vasos Principais Coloridos por Fluoroscopia", min_value=0, max_value=4, value=0)
+    thal = st.sidebar.slider("Tipo de Defeito Cardíaco", min_value=0, max_value=3, value=2)
 
-new_df = st.data_editor(
-    df,
-    column_config = {
-        "Questions":st.column_config.TextColumn(
-            width = "medium",
-            disabled=True
-        ),
-        "Answers":st.column_config.TextColumn(
-            width = "medium",
-            disabled=True
-        ),
-        "Issue":st.column_config.CheckboxColumn(
-            "Mark as annotated?",
-            default = False
-        ),
-        "Category":st.column_config.SelectboxColumn
-        (
-        "Issue Category",
-        help = "select the category",
-        options = ['Accuracy', 'Relevance', 'Coherence', 'Bias', 'Completeness'],
-        required = False
-        )
-    }
-)
+    new_patient = np.array([age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal])
+    new_patient_scaled = scaler.transform(new_patient.reshape(1, -1))
+    prediction = perceptron.predict(new_patient_scaled)
 
-st.write("You will notice that we changed our dataframe and added new data. "
-         "Now it is time to visualize what we have annotated!")
+    if prediction == 1:
+        st.write("O paciente está em risco de doenças cardíacas.")
+    else:
+        st.write("O paciente não está em risco de doenças cardíacas.")
 
-st.divider()
-
-st.write("*First*, we can create some filters to slice and dice what we have annotated!")
-
-col1, col2 = st.columns([1,1])
-with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options = new_df.Issue.unique())
-with col2:
-    category_filter = st.selectbox("Choose a category", options  = new_df[new_df["Issue"]==issue_filter].Category.unique())
-
-st.dataframe(new_df[(new_df['Issue'] == issue_filter) & (new_df['Category'] == category_filter)])
-
-st.markdown("")
-st.write("*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`")
-
-issue_cnt = len(new_df[new_df['Issue']==True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
-
-col1, col2 = st.columns([1,1])
-with col1:
-    st.metric("Number of responses",issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
-
-df_plot = new_df[new_df['Category']!=''].Category.value_counts().reset_index()
-
-st.bar_chart(df_plot, x = 'Category', y = 'count')
-
-st.write("Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:")
-
+if __name__ == "__main__":
+    main()
