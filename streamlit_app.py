@@ -4,6 +4,11 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+# Definindo uma função para aplicar estilo ao texto do resultado
+def resultado_estilizado(texto, cor_fundo="blue", estilo="info"):
+    cor_texto = "#333333"  # Cor escura para o texto ser legível em fundos claros
+    return f'<div style="font-size: 24px; padding: 10px; color: {cor_texto}; background-color: {cor_fundo}; border-radius: 5px;">{texto}</div>'
+
 class Perceptron:
     def __init__(self, num_inputs, learning_rate=0.01, epochs=100):
         self.num_inputs = num_inputs
@@ -53,12 +58,14 @@ def main():
     perceptron.train(X_train_scaled, y_train)
 
     # Interface do usuário para inserir novos dados
-    st.sidebar.header("Novos Dados do Paciente")
+    st.sidebar.title("Novos Dados do Paciente")
     age = st.sidebar.slider("Idade", min_value=20, max_value=100, value=50)
     sex = st.sidebar.radio("Sexo", ["Masculino", "Feminino"])
     sex = 1 if sex == "Masculino" else 0
-    cp = st.sidebar.slider("Tipo de Dor no Peito", min_value=0, max_value=3, value=1)
-    trestbps = st.sidebar.slider("Pressão Arterial em Repouso", min_value=80, max_value=200, value=120)
+    cp = st.sidebar.slider("Tipo de Dor no Peito (Angina)", min_value=0, max_value=3, value=1,
+                           help="0: Angina típica, 1: Angina atípica, 2: Dor não anginosa, 3: Assintomático")
+    trestbps = st.sidebar.slider("Pressão Arterial em Repouso", min_value=80, max_value=200, value=120,
+                                 help="Quantidade de colesterol total no sangue, que é a soma das frações HDL, LDL e VLDL")
     chol = st.sidebar.slider("Colesterol Sérico em mg/dl", min_value=100, max_value=600, value=200)
     fbs = st.sidebar.radio("Nível de Açúcar no Sangue em Jejum", ["< 120 mg/dl", "> 120 mg/dl"])
     fbs = 1 if fbs == "> 120 mg/dl" else 0
@@ -67,19 +74,23 @@ def main():
     exang = st.sidebar.radio("Angina Induzida pelo Exercício", ["Sim", "Não"])
     exang = 1 if exang == "Sim" else 0
     oldpeak = st.sidebar.slider("Depressão do Segmento ST Induzida pelo Exercício em Relação ao Repouso",
-                                min_value=0.0, max_value=10.0, value=2.0)
+                                min_value=0.0, max_value=10.0, value=2.0,
+                                help="Alteração no traçado de um eletrocardiograma (ECG)")
     slope = st.sidebar.slider("Inclinação do Segmento ST do Pico do Exercício", min_value=0, max_value=2, value=1)
-    ca = st.sidebar.slider("Número de Vasos Principais Coloridos por Fluoroscopia", min_value=0, max_value=4, value=0)
-    thal = st.sidebar.slider("Tipo de Defeito Cardíaco", min_value=0, max_value=3, value=2)
+    ca = st.sidebar.slider("Número de Vasos Principais Coloridos por Fluoroscopia", min_value=0, max_value=4, value=0,
+                           help="Técnica de imagem para obter imagens em tempo real de estruturas internas de um indivíduo através do uso de um fluoroscópio")
+    thal = st.sidebar.slider("Tipo de Defeito Cardíaco", min_value=0, max_value=3, value=2,
+                             help="0: Normal, 1: Defeito fixo, 2: Defeito reversível, 3: Valor indefinido")
 
     new_patient = np.array([age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal])
     new_patient_scaled = scaler.transform(new_patient.reshape(1, -1))
     prediction = perceptron.predict(new_patient_scaled)
 
+    # Exibindo o resultado estilizado com cor dinâmica
     if prediction == 1:
-        st.write("O paciente está em risco de doenças cardíacas.")
+        st.markdown(resultado_estilizado("O paciente está em risco de doenças cardíacas.", cor_fundo="#ff6961", estilo="aviso"), unsafe_allow_html=True)
     else:
-        st.write("O paciente não está em risco de doenças cardíacas.")
+        st.markdown(resultado_estilizado("O paciente não está em risco de doenças cardíacas.", cor_fundo="#90ee90", estilo="info"), unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
